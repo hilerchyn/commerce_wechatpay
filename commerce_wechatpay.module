@@ -52,8 +52,8 @@ function commerce_wechatpay_init() {
   // load sdk
   $path = libraries_get_path('overtrue_wechat');
   $realpath = drupal_realpath($path);
-  if(file_exists($realpath.'/autoload.php')){
-    include_once $realpath.'/autoload.php';
+  if(file_exists($realpath.'/vendor/autoload.php')){
+    include_once $realpath.'/vendor/autoload.php';
     include_once 'commerce_wechatpay.inc';
   }
   else {
