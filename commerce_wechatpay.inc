@@ -1,12 +1,16 @@
 <?php
 
-use Overtrue\Wechat\Payment;
-use Overtrue\Wechat\Payment\Order;
-use Overtrue\Wechat\Payment\Business;
-use Overtrue\Wechat\Payment\UnifiedOrder;
-use Overtrue\Wechat\Payment\Notify;
+use EasyWeChat\Payment;
+use EasyWeChat\Payment\Order;
+use EasyWeChat\Payment\Business;
+use EasyWeChat\Payment\UnifiedOrder;
+use EasyWeChat\Payment\Notify;
 
-use Overtrue\Wechat\Auth;
+//
+use EasyWeChat\Payment\API;
+use EasyWeChat\Payment\Merchant;
+// for response
+use EasyWeChat\Support\Collection;
 
 /**
  * Class CommerceWechatpay
@@ -27,7 +31,7 @@ Class CommerceWechatpay {
   protected $transaction_info;
   protected $notify_obj;
 
-  public function __construct($appId, $appSecret, $mchId, $mchKey){
+  public function __construct($appId, $appSecret, $mchId, $mchKey){ 
     $this->appId = $appId;
     $this->appSecret = $appSecret;
     $this->mchId = $mchId;
@@ -81,33 +85,48 @@ Class CommerceWechatpay {
 
   }
 
-  public function proceed_qrpay($order_num, $oder_name, $price, $notify_url) {
     /**
-     * Set business
+     * @param $order_num
+     * @param $oder_name
+     * @param $price
+     * @param $notify_url
+     * @return bool
      */
-    $business = new Business($this->appId, $this->appSecret, $this->mchId, $this->mchKey);
+  public function proceed_qrpay($order_num, $oder_name, $price, $notify_url) {
+      
+      //var_dump(func_get_args());
+
+
+      $merchat = new Merchant(['app_id'=>$this->appId, 'merchant_id'=>$this->mchId, 'key'=>$this->mchKey]);
+      $api = new API($merchat);
 
     /**
      * Create order
      */
-    $order = new Order();
-    $order->trade_type = 'NATIVE';
+    $order = new Order([]);
+    $order->trade_type = Order::NATIVE;
     $order->body = $oder_name;
     $order->out_trade_no = $this->orderId2outTradeNo($order_num);
     $order->total_fee = $price;    // 单位为 “分”, 字符串类型
     $order->notify_url = $notify_url;
 
+      $response = $api->prepare($order);
+
+      $code_url = $response->get('code_url');
+
     /**
      * Process Unified order
      */
+    /*
     $unifiedOrder = new UnifiedOrder($business, $order);
     $uni_res = $unifiedOrder->getResponse();
+    */
 
-    if (empty($uni_res["code_url"])) {
+    if (empty($code_url)) {
       return false;
     }
 
-    return $uni_res["code_url"];
+    return $code_url;
   }
 
   /**
