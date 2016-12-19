@@ -374,13 +374,13 @@ function commerce_wechatpay_order_check_handler($order_id) {
   if (empty($_SESSION['order_'.$order_id])) {
     header('HTTP/1.1 403 Forbidden');
     header('Content-Type: application/json');
-    exit(json_encode(['status'=>0,'message'=>'forbidden']));
+    exit(json_encode(array('status'=>0,'message'=>'forbidden')));
   }
 
   if (!$order = commerce_order_load($order_id)) {
     header('HTTP/1.1 404 Unprocessable Entity');
     header('Content-Type: application/json');
-    exit(json_encode(['status'=>0,'message'=>'order not found']));
+    exit(json_encode(array('status'=>0,'message'=>'order not found')));
   }
 
   // if order is real and is this user
@@ -390,7 +390,7 @@ function commerce_wechatpay_order_check_handler($order_id) {
   header('Content-Type: application/json');
 
   $status = !empty($transactions) ? 1 : 0;
-  exit(json_encode(['status'=>$status]));
+  exit(json_encode(array('status'=>$status)));
 }
 
 

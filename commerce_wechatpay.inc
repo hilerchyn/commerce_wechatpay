@@ -54,13 +54,13 @@ Class CommerceWechatpay
         //var_dump(func_get_args());
 
 
-        $merchat = new Merchant(['app_id' => $this->appId, 'merchant_id' => $this->mchId, 'key' => $this->mchKey]);
+        $merchat = new Merchant(array('app_id' => $this->appId, 'merchant_id' => $this->mchId, 'key' => $this->mchKey));
         $api = new API($merchat);
 
         /**
          * Create order
          */
-        $order = new Order([]);
+        $order = new Order(array());
         $order->trade_type = Order::NATIVE;
         $order->body = $oder_name;
         $order->out_trade_no = $this->orderId2outTradeNo($order_num);
