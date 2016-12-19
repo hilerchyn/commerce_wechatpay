@@ -21,69 +21,25 @@ use EasyWeChat\Support\Collection;
  * @see commerce_wechatpay_get_handler_class()
  *
  */
-Class CommerceWechatpay {
+Class CommerceWechatpay
+{
 
-  protected $appId;
-  protected $appSecret;
-  protected $mchId;
-  protected $mchKey;
-  protected $jsParm;
-  protected $transaction_info;
-  protected $notify_obj;
+    protected $appId;
+    protected $appSecret;
+    protected $mchId;
+    protected $mchKey;
+    protected $jsParm;
+    protected $transaction_info;
+    protected $notify_obj;
 
-  public function __construct($appId, $appSecret, $mchId, $mchKey){ 
-    $this->appId = $appId;
-    $this->appSecret = $appSecret;
-    $this->mchId = $mchId;
-    $this->mchKey = $mchKey;
-    return $this;
-  }
-
-  /**
-   * Prepare all parameters and send to Wechat
-   */
-  public function proceed($order_num, $oder_name, $price, $notify_url){
-    /**
-     * Set business
-     */
-    $business = new Business($this->appId, $this->appSecret, $this->mchId, $this->mchKey);
-
-    /**
-     * Get openid
-     */
-    $auth = new Auth($this->appId, $this->appSecret);
-
-    if (empty($_SESSION['wechat_logged_user'])) {
-      $user = $auth->authorize(null, 'snsapi_base', 'STATE');
-      $_SESSION['wechat_logged_user'] = $user->all();
-    } else {
-      $user = $_SESSION['wechat_logged_user'];
+    public function __construct($appId, $appSecret, $mchId, $mchKey)
+    {
+        $this->appId = $appId;
+        $this->appSecret = $appSecret;
+        $this->mchId = $mchId;
+        $this->mchKey = $mchKey;
+        return $this;
     }
-    $openid = $user['openid'];
-
-
-    /**
-     * Create order
-     */
-    $order = new Order();
-    $order->body = $oder_name;
-    $order->out_trade_no = $this->orderId2outTradeNo($order_num);
-    $order->total_fee = $price;    // 单位为 “分”, 字符串类型
-    $order->openid = $openid;
-    $order->notify_url = $notify_url;
-
-    /**
-     * Process Unified order
-     */
-    $unifiedOrder = new UnifiedOrder($business, $order);
-
-    /**
-     * Generate payment parameters
-     */
-    $payment = new Payment($unifiedOrder);
-    $this->jsParm = $payment->getConfig();
-
-  }
 
     /**
      * @param $order_num
@@ -92,95 +48,150 @@ Class CommerceWechatpay {
      * @param $notify_url
      * @return bool
      */
-  public function proceed_qrpay($order_num, $oder_name, $price, $notify_url) {
-      
-      //var_dump(func_get_args());
+    public function proceed_qrpay($order_num, $oder_name, $price, $notify_url)
+    {
+
+        //var_dump(func_get_args());
 
 
-      $merchat = new Merchant(['app_id'=>$this->appId, 'merchant_id'=>$this->mchId, 'key'=>$this->mchKey]);
-      $api = new API($merchat);
+        $merchat = new Merchant(['app_id' => $this->appId, 'merchant_id' => $this->mchId, 'key' => $this->mchKey]);
+        $api = new API($merchat);
+
+        /**
+         * Create order
+         */
+        $order = new Order([]);
+        $order->trade_type = Order::NATIVE;
+        $order->body = $oder_name;
+        $order->out_trade_no = $this->orderId2outTradeNo($order_num);
+        $order->total_fee = $price;    // 单位为 “分”, 字符串类型
+        $order->notify_url = $notify_url;
+
+        $response = $api->prepare($order);
+
+        $code_url = $response->get('code_url');
+
+        /**
+         * Process Unified order
+         */
+        /*
+        $unifiedOrder = new UnifiedOrder($business, $order);
+        $uni_res = $unifiedOrder->getResponse();
+        */
+
+        if (empty($code_url)) {
+            return false;
+        }
+
+        return $code_url;
+    }
 
     /**
-     * Create order
+     * Generate out trade number from order_id, feel free to extend
      */
-    $order = new Order([]);
-    $order->trade_type = Order::NATIVE;
-    $order->body = $oder_name;
-    $order->out_trade_no = $this->orderId2outTradeNo($order_num);
-    $order->total_fee = $price;    // 单位为 “分”, 字符串类型
-    $order->notify_url = $notify_url;
-
-      $response = $api->prepare($order);
-
-      $code_url = $response->get('code_url');
+    public function orderId2outTradeNo($order_num)
+    {
+        $out_trade_no = $order_num;
+        return $out_trade_no;
+    }
 
     /**
-     * Process Unified order
+     * Get order_id from out trade number, feel free to extend
      */
-    /*
-    $unifiedOrder = new UnifiedOrder($business, $order);
-    $uni_res = $unifiedOrder->getResponse();
-    */
-
-    if (empty($code_url)) {
-      return false;
+    public function outTradeNo2orderId($out_trade_no)
+    {
+        $order_num = $out_trade_no;
+        return $order_num;
     }
 
-    return $code_url;
-  }
-
-  /**
-   * Generate out trade number from order_id, feel free to extend
-   */
-  public function orderId2outTradeNo($order_num) {
-    $out_trade_no = $order_num;
-    return $out_trade_no;
-  }
-
-  /**
-   * Get order_id from out trade number, feel free to extend
-   */
-  public function outTradeNo2orderId($out_trade_no) {
-    $order_num = $out_trade_no;
-    return $order_num;
-  }
-
-  public function getJsParm($order_num, $oder_name, $price = 1, $notify_url, $sendOpenId = TRUE){
-    $this->proceed($order_num, $oder_name, $price, $notify_url, $sendOpenId);
-    return $this->jsParm;
-  }
-
-  /**
-   * Receive notification and verify it
-   *
-   * @return bool|array
-   */
-  public function receiveNotify() {
-
-    $transaction = $this->getNotifyInstance()->verify();
-
-    if (!$transaction) {
-      return false;
+    public function getJsParm($order_num, $oder_name, $price = 1, $notify_url, $sendOpenId = TRUE)
+    {
+        $this->proceed($order_num, $oder_name, $price, $notify_url, $sendOpenId);
+        return $this->jsParm;
     }
 
-    $this->transaction_info = $transaction->all();
+    /**
+     * Prepare all parameters and send to Wechat
+     */
+    public function proceed($order_num, $oder_name, $price, $notify_url)
+    {
+        /**
+         * Set business
+         */
+        $business = new Business($this->appId, $this->appSecret, $this->mchId, $this->mchKey);
 
-    return $transaction->all();
-  }
+        /**
+         * Get openid
+         */
+        $auth = new Auth($this->appId, $this->appSecret);
 
-  public function getTransactionInfo() {
-    return $this->transaction_info;
-  }
+        if (empty($_SESSION['wechat_logged_user'])) {
+            $user = $auth->authorize(null, 'snsapi_base', 'STATE');
+            $_SESSION['wechat_logged_user'] = $user->all();
+        } else {
+            $user = $_SESSION['wechat_logged_user'];
+        }
+        $openid = $user['openid'];
 
-  public function getReplyReceived() {
-    return $this->getNotifyInstance()->reply();
-  }
 
-  public function getNotifyInstance() {
-    if (!$this->notify_obj) {
-      $this->notify_obj = new Notify($this->appId, $this->appSecret, $this->mchId, $this->mchKey);
+        /**
+         * Create order
+         */
+        $order = new Order();
+        $order->body = $oder_name;
+        $order->out_trade_no = $this->orderId2outTradeNo($order_num);
+        $order->total_fee = $price;    // 单位为 “分”, 字符串类型
+        $order->openid = $openid;
+        $order->notify_url = $notify_url;
+
+        /**
+         * Process Unified order
+         */
+        $unifiedOrder = new UnifiedOrder($business, $order);
+
+        /**
+         * Generate payment parameters
+         */
+        $payment = new Payment($unifiedOrder);
+        $this->jsParm = $payment->getConfig();
+
     }
-    return $this->notify_obj;
-  }
+
+    /**
+     * Receive notification and verify it
+     *
+     * @return bool|array
+     */
+    public function receiveNotify()
+    {
+
+        $transaction = $this->getNotifyInstance()->verify();
+
+        if (!$transaction) {
+            return false;
+        }
+
+        $this->transaction_info = $transaction->all();
+
+        return $transaction->all();
+    }
+
+    public function getNotifyInstance()
+    {
+        if (!$this->notify_obj) {
+            $this->notify_obj = new Notify($this->appId, $this->appSecret, $this->mchId, $this->mchKey);
+        }
+        return $this->notify_obj;
+    }
+
+    public function getTransactionInfo()
+    {
+        return $this->transaction_info;
+    }
+
+    public function getReplyReceived()
+    {
+        return $this->getNotifyInstance()->reply();
+    }
 
 }
