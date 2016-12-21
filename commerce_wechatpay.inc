@@ -196,7 +196,26 @@ Class CommerceWechatpay
 
     public function getReplyReceived()
     {
-        return $this->getNotifyInstance()->reply();
+        //return $this->getNotifyInstance()->reply();
+
+        return $this->_reply();
+    }
+
+    /**
+     * 回复消息, 如果不回复, 微信会一直发送请求到notify_url
+     *
+     * @param string $code
+     * @param string $msg
+     *
+     * @return string
+     */
+    private function _reply($code = 'SUCCESS', $msg = 'OK') {
+        $params = [
+            'return_code' => $code,
+            'return_msg' => $msg,
+        ];
+
+        return XML::build($params);
     }
 
 }
