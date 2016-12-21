@@ -9,6 +9,7 @@ use EasyWeChat\Payment\Notify;
 //
 use EasyWeChat\Payment\API;
 use EasyWeChat\Payment\Merchant;
+use EasyWeChat\Support\XML;
 // for response
 use EasyWeChat\Support\Collection;
 
