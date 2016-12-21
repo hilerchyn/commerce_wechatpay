@@ -1,6 +1,6 @@
 <?php
 
-use EasyWeChat\Payment;
+use EasyWeChat\Payment\Payment;
 use EasyWeChat\Payment\Order;
 use EasyWeChat\Payment\Business;
 use EasyWeChat\Payment\UnifiedOrder;
@@ -165,11 +165,14 @@ Class CommerceWechatpay
     public function receiveNotify()
     {
 
-        $transaction = $this->getNotifyInstance()->verify();
+        $notify_instance = $this->getNotifyInstance();
+        //$transaction = $this->getNotifyInstance()->verify();
 
-        if (!$transaction) {
+        if (!$notify_instance->isValid()) {
             return false;
         }
+
+        $transaction = $notify_instance->getNotify();
 
         $this->transaction_info = $transaction->all();
 
@@ -179,7 +182,9 @@ Class CommerceWechatpay
     public function getNotifyInstance()
     {
         if (!$this->notify_obj) {
-            $this->notify_obj = new Notify($this->appId, $this->appSecret, $this->mchId, $this->mchKey);
+            $merchant = new Merchant(['app_id' => $this->appId, 'merchant_id' => $this->mchId, 'key' => $this->mchKey]);
+            $payment = new Payment($merchant);
+            $this->notify_obj = $payment->getNotify();
         }
         return $this->notify_obj;
     }
